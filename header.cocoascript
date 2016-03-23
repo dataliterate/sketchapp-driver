@@ -1,0 +1,23 @@
+function SKETCH_DRIVER(requestid) {
+
+  var logentries = [];
+  var old_log = log;
+  log = this.log;
+  return {
+    respond: function(data) {
+      var response = {
+        requestid: requestid,
+        data: data,
+        log: logentries
+      }
+      old_log(JSON.stringify(response));
+    },
+    log: function(s) {
+      if(arguments.length > 1) {
+        logentries.push(arguments);
+        return;
+      }
+      logentries.push(s);
+    }
+  }
+};
