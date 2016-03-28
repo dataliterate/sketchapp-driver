@@ -15,7 +15,7 @@ describe('Opening Files', function() {
 
 });
 
-describe.only('Running Scripts', function() {
+describe('Running Scripts', function() {
 
   before(function(done) {
     sketch.open(
@@ -48,6 +48,61 @@ describe.only('Running Scripts', function() {
       $SD.respond({'artboardCount': context.document.artboards().count()});
     `, function(err, response, errorMessage) {
       expect(response.data.artboardCount).to.equal(1);
+      done();
+    });
+  });
+
+  it('should fix line numbers in error messages', function(done) {
+    sketch.run(`
+      context.document.showMessageX('Hello World');
+    `, function(err, response, errorMessage) {
+      done();
+    });
+  });
+
+});
+
+describe('Using Imports', function() {
+
+  before(function(done) {
+    sketch.open(
+      path.join(__dirname, 'test.sketch'),
+      done
+    );
+  });
+
+  xit('should resolve relative file path', function(done) {
+
+  });
+
+});
+
+describe('Debugging Scripts', function() {
+
+  before(function(done) {
+    sketch.open(
+      path.join(__dirname, 'test.sketch'),
+      done
+    );
+  });
+
+  it('should fix line numbers in error messages', function(done) {
+    sketch.run(`context.document.showMessageX('Hello World');`,
+      function(err, response, error) {
+        expect(error.entries.line).to.equal(1);
+        done();
+      });
+  });
+
+  it('should fix line numbers in error messages', function(done) {
+    sketch.run(`
+
+
+
+      context.document.showMessage('Hello World');
+      context.document.showMessageX('Hello World');
+    `, function(err, response, error) {
+      expect(error.entries.line).to.equal(6);
       done();
     });
   });

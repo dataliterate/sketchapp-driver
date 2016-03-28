@@ -1,5 +1,4 @@
 function SKETCH_DRIVER(requestid) {
-
   var logentries = [];
   var old_log = log;
   log = this.log;
