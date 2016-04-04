@@ -71,8 +71,39 @@ describe('Using Imports', function() {
     );
   });
 
-  xit('should resolve relative file path', function(done) {
+  it('should resolve relative file path', function(done) {
+    sketch.run(`
+      SD_TEST_response = 'hello from responder.sketch';
+      @import './responder.cocoascript'
+    `, function(err, response, errorMessage) {
+      expect(response.data).to.have.keys(['msg']);
+      expect(response.data.msg).to.equal('hello from responder.sketch');
+      done();
+    });
+  });
 
+  it('should resolve relative file path', function(done) {
+    sketch.run(`
+      @import './count-artboards.cocoascript'
+      SD_TEST_response = artboardCount;
+      @import './responder.cocoascript'
+    `, function(err, response, errorMessage) {
+      expect(response.data).to.have.keys(['msg']);
+      expect(response.data.msg).to.equal(1);
+      done();
+    });
+  });
+
+
+  it('should resolve relative file path based on config', function(done) {
+    sketch.run(`
+      @import 'fixtures/set-response.cocoascript'
+      @import './responder.cocoascript'
+    `, {root: __dirname}, function(err, response, errorMessage) {
+      expect(response.data).to.have.keys(['msg']);
+      expect(response.data.msg).to.equal('ABC');
+      done();
+    });
   });
 
 });

@@ -1,0 +1,1 @@
+var artboardCount = context.document.artboards().count();

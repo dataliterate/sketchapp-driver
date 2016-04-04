@@ -54,7 +54,31 @@ function fixLineNumber(scriptFile, msg) {
   return errorObject;
 }
 
-function run(cocoascript, cb) {
+function fixImportsForScript(script, root) {
+  var importParser = /@import \'(.*)'/gm;
+
+  // dangerous: http://stackoverflow.com/a/26877091
+  var rootPath = root || path.dirname(module.parent.filename);
+  
+  script = script.replace(importParser, (match, p1, offset, string) => {
+    var resolvedPath = path.resolve(rootPath, p1);
+    return `@import '${resolvedPath}'`;
+  });
+  return script;
+}
+
+function run(cocoascript, configOrCallback, cb) {
+
+  if(!cb && typeof configOrCallback == 'function') {
+    cb = configOrCallback;
+    configOrCallback = {};
+  }
+
+  var defaultConfig = {
+    root: null
+  };
+  var config = Object.assign({}, defaultConfig, configOrCallback);
+
   // @TODO: refactor callback signature
   var identifier = new Date().getTime();
   var file = path.join(__dirname, TMP_DIR, identifier + '.cocoascript');
@@ -62,7 +86,11 @@ function run(cocoascript, cb) {
   var script = header;
   script += "\n" + '$SD = SKETCH_DRIVER("' + identifier + '"); log = $SD.log;';
   script += "\n" + cocoascript;
+
+  script = fixImportsForScript(script, config.root);
   fs.writeFileSync(file, script);
+
+
   var e = "[[[COScript app:\\\"Sketch\\\"] delegate] runPluginAtURL:[NSURL fileURLWithPath:\\\"" + file + "\\\"]]";
   child_process.exec(coscript + ' -e "' + e + '"', function (err, stdout, stderr) {
     //fs.unlinkSync(file);
