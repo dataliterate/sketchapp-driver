@@ -7,7 +7,7 @@ It allows javascript developers to easily create code to open sketch documents, 
 Sketch Driver makes it easier to develop and run sketch plugins from the outside of Sketch App.
 
 ```
-npm install sketch-driver
+npm install preciousforever/sketch-driver
 ```
 
 ```js
@@ -28,10 +28,14 @@ Sketch Plugins - accessible from the UI - are great, unless you want to trigger 
 Sketch Driver is at an early state (at 'sketch' level so to say), a rough concept as personal preparation for [Sketch Hackday](http://designtoolshackday.com/)
 
 ### Next Up
+x relative imports
+x improve logging
+- upload to npm
+- improve linenumer logging when using import statements
+- enable (recursive) relative imports
 - execute files
 - add watch example
 - add server based commuincation in addition to [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop)
-- improve logging
 - verbosity options
 
 ---
@@ -71,6 +75,27 @@ sketch.run(`$SD.respond({'artboardCount': context.document.artboards().count()})
     console.log("current sketch document has " + response.data.artboardCount + "artboards");
     })
 
+```
+
+## Imports
+
+You may use imports relative to the javascript file, where you require 'sketch-driver'. Sketch-Driver will fix the imports, so sketch is able to find the files.
+
+```js
+/*
+Directory Structure
+- node_modules
+- snippets/count-artboard.cocoascript
+    var artboardCount = context.document.artboards().count(); 
+- index.js
+
+content of index.js below
+*/
+var sketch = require('sketch-driver');
+sketch.run(`@import 'snippets/count-artboard.cocoascript'
+    $SD.respond({'artboardCount': artboardCount});`, function(err, response) {
+    console.log("current sketch document has " + response.data.artboardCount + "artboards");
+    })
 ```
 
 # Development
