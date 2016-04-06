@@ -29,8 +29,9 @@ class ErrorObject {
   }
   toString() {
     var msg = [];
-    Object.keys(this.entries).forEach(function(k) {
-      msg.push(`${k}: ${this.entries[k]}`);
+    var entries = this.entries;
+    Object.keys(entries).forEach(function(k) {
+      msg.push(`${k}: ${entries[k]}`);
     });
     return msg.join('\n');
   }
@@ -57,7 +58,7 @@ function fixLineNumber(scriptFile, msg) {
 function fixImportsForScript(script, root) {
   var importParser = /@import \'(.*)'/gm;
 
-  // dangerous: http://stackoverflow.com/a/26877091
+  // dangerous, might be wrong: http://stackoverflow.com/a/26877091
   var rootPath = root || path.dirname(module.parent.filename);
   
   script = script.replace(importParser, (match, p1, offset, string) => {
@@ -67,17 +68,41 @@ function fixImportsForScript(script, root) {
   return script;
 }
 
-function run(cocoascript, configOrCallback, cb) {
-
-  if(!cb && typeof configOrCallback == 'function') {
-    cb = configOrCallback;
-    configOrCallback = {};
-  }
+function runFile(filePath, userConfig) {
 
   var defaultConfig = {
     root: null
   };
-  var config = Object.assign({}, defaultConfig, configOrCallback);
+  var config = Object.assign({}, defaultConfig, userConfig);
+
+  // dangerous, might be wrong: http://stackoverflow.com/a/26877091
+  var rootPath = config.root || path.dirname(module.parent.filename);
+  var absPath = path.resolve(rootPath, filePath);
+
+  if(!fs.existsSync(absPath)) {
+    return new Promise((resolve, reject) => {
+      reject(new Error('file ' + absPath + ' does not exist'));
+    });
+  }
+  var script = fs.readFileSync(path.resolve(rootPath, filePath), 'utf-8');
+
+  return run(script, config);
+
+}
+
+function run(cocoascript, userConfig) {
+
+  var defaultConfig = {
+    root: null,
+    verbose: true
+  };
+  var config = Object.assign({}, defaultConfig, userConfig);
+
+  function log(s) {
+    if(config.verbose) {
+      console.log(s);
+    }
+  }
 
   // @TODO: refactor callback signature
   var identifier = new Date().getTime();
@@ -90,41 +115,54 @@ function run(cocoascript, configOrCallback, cb) {
   script = fixImportsForScript(script, config.root);
   fs.writeFileSync(file, script);
 
+  return new Promise((resolve, reject) => {
 
-  var e = "[[[COScript app:\\\"Sketch\\\"] delegate] runPluginAtURL:[NSURL fileURLWithPath:\\\"" + file + "\\\"]]";
-  child_process.exec(coscript + ' -e "' + e + '"', function (err, stdout, stderr) {
-    //fs.unlinkSync(file);
-    if(err) throw err;
-    if(!cb) {
-      return;
-    }
-    if(stderr) {
-      cb(null, null, stderr);
-    }
-    var response = {};
-    try {
-      var response = JSON.parse(stdout);
-      cb(null, response);
-    } catch(e) {
-      if (isErrorMessage(stdout)) {
-        var error = fixLineNumber(file, stdout);
-        cb(null, true, error);
+    var e = "[[[COScript app:\\\"Sketch\\\"] delegate] runPluginAtURL:[NSURL fileURLWithPath:\\\"" + file + "\\\"]]";
+    child_process.exec(coscript + ' -e "' + e + '"', function (err, stdout, stderr) {
+      //fs.unlinkSync(file);
+      if(err) throw err;
+      if(stderr) {
+        log('Process Error: ' + stderr);
+        reject(stderr);
         return;
       }
-      cb(null, true, e);
-    }
-    
+      if(stdout.length <= 1) {
+        log('Missing REPL response');
+        resolve();
+        return;
+      }
+      var response = {};
+      try {
+        var response = JSON.parse(stdout);
+        resolve(response);
+        return;
+      } catch(e) {
+        if (isErrorMessage(stdout)) {
+          log('Sketch Error: ' + stdout);
+          var error = fixLineNumber(file, stdout);
+          log('Improved Sketch Error: ' + error);
+          reject(error);
+          return;
+        }
+        log('Parsing Error: ' + e);
+        reject(e);
+        return;
+      }
+      
+    });
+
   });
+
 }
 
-function open(url, cb) {
-  run(`
+function open(url) {
+  return run(`
     var path = "${url}";
     [[NSWorkspace sharedWorkspace] openFile:path];
     $SD.respond({});
-  `, cb);
+  `);
 }
 
 module.exports.open = open;
 module.exports.run = run;
-
+module.exports.runFile = runFile;

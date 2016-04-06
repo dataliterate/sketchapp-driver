@@ -28,15 +28,16 @@ Sketch Plugins - accessible from the UI - are great, unless you want to trigger 
 Sketch Driver is at an early state (at 'sketch' level so to say), a rough concept as personal preparation for [Sketch Hackday](http://designtoolshackday.com/)
 
 ### Next Up
-x relative imports
-x improve logging
-- upload to npm
-- improve linenumer logging when using import statements
-- enable (recursive) relative imports
-- execute files
-- add watch example
-- add server based commuincation in addition to [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop)
-- verbosity options
+- [x] relative imports
+- [x] improve logging
+- [x] simple verbosity options
+- [x] Promise based API
+- [ ] WIP improve linenumber logging when using import statements
+- [ ] upload to npm
+- [ ] enable (recursive) relative imports
+- [ ] execute files
+- [ ] add watch example
+- [ ] add server based commuincation in addition to [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop)
 
 ---
 
