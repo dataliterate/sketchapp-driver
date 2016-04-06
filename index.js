@@ -5,7 +5,8 @@ var child_process = require('child_process');
 var coscript = require('coscript');
 
 var TMP_DIR = 'tmp';
-var MAGIC_LINE_CORRECTION = 6;
+var MAGIC_LINE_CORRECTION = 5;
+var MAGIC_LINE_IMPORT_CORRECTION = 5;
 
 if (!fs.existsSync(TMP_DIR)){
   fs.mkdirSync(TMP_DIR);
@@ -48,10 +49,64 @@ function parseMsg(msg) {
   return error;
 }
 
-function fixLineNumber(scriptFile, msg) {
-  // @todo: evaluate imports
+function fixLineNumber(script, msg, config) {
   var errorObject = parseMsg(msg);
-  errorObject.entries.line = parseInt(errorObject.entries.line) - header.split("\n").length - 1 - MAGIC_LINE_CORRECTION;
+  var virtualErrorLineNumber = parseInt(errorObject.entries.line, 10);
+
+  console.log("error on line: " + virtualErrorLineNumber);
+  var libraryLines = header.split("\n").length + 2;
+  //virtualErrorLineNumber -= libraryLines;
+
+  var lineNumber = undefined;
+  var correction = MAGIC_LINE_CORRECTION;
+  var importParser = /@import \'(.*)\'/gm;
+  var importLineParser = /@import \'(.*)\'/;
+  var imports = script.match(importParser);
+
+  if(imports) {
+    
+    // file contains imports
+    var lines = script.split('\n');
+    var importedLines = 0;
+    var seek = true;
+    var file = 'script';
+    for(var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+
+      var match = importLineParser.exec(line);
+
+      if(config && config.file) {
+        file = config.file;
+      }
+      
+      if(match) {
+        file = match[1];
+        var importFileLines = fs.readFileSync(file).toString().split('\n').length;
+        importedLines += importFileLines;
+        //correction -= 1; //MAGIC_LINE_IMPORT_CORRECTION;
+        if(i + importedLines >= virtualErrorLineNumber - correction) {
+          // error inside import
+          lineNumber = importFileLines - (i + importedLines - virtualErrorLineNumber) - 7;
+          break;
+        }
+      } else {
+        if(i + importedLines + 1 >= virtualErrorLineNumber - correction) {
+
+          lineNumber = virtualErrorLineNumber - importedLines - libraryLines - MAGIC_LINE_CORRECTION;
+          break;
+        }
+      }
+    }
+    errorObject.entries.sourceURL = file;
+  } else {
+    lineNumber = virtualErrorLineNumber - libraryLines - MAGIC_LINE_CORRECTION;
+    if(config && config.file) {
+      errorObject.entries.sourceURL = config.file;
+    }
+  }
+
+  errorObject.entries.line = lineNumber;
+
   return errorObject;
 }
 
@@ -71,7 +126,8 @@ function fixImportsForScript(script, root) {
 function runFile(filePath, userConfig) {
 
   var defaultConfig = {
-    root: null
+    root: null,
+    file: filePath
   };
   var config = Object.assign({}, defaultConfig, userConfig);
 
@@ -137,9 +193,10 @@ function run(cocoascript, userConfig) {
         resolve(response);
         return;
       } catch(e) {
+        log('Stdout: ' + stdout);
         if (isErrorMessage(stdout)) {
           log('Sketch Error: ' + stdout);
-          var error = fixLineNumber(file, stdout);
+          var error = fixLineNumber(script, stdout, config);
           log('Improved Sketch Error: ' + error);
           reject(error);
           return;

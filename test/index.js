@@ -17,7 +17,7 @@ describe('Opening Sketch Files', function() {
 
 });
 
-describe.only('Running Inline Scripts', function() {
+describe('Running Inline Scripts', function() {
 
   before(function() {
     return sketch.open(path.join(__dirname, 'test.sketch'));
@@ -78,7 +78,7 @@ describe('Running Scripts from files', function() {
 
 });
 
-describe.only('Using Imports', function() {
+describe('Using Imports', function() {
 
   before(function() {
     return sketch.open(path.join(__dirname, 'test.sketch'));
@@ -120,7 +120,8 @@ describe.only('Using Imports', function() {
 
 });
 
-describe.only('Debugging Scripts', function() {
+
+describe('Fix Line Numbers', function() {
 
   before(function() {
     return sketch.open(path.join(__dirname, 'test.sketch'));
@@ -133,7 +134,7 @@ describe.only('Debugging Scripts', function() {
       });
   });
 
-  it('should fix line numbers in error messages', function(done) {
+  it('should fix line numbers in error messages', function() {
     return sketch.run(`
 
 
@@ -142,7 +143,77 @@ describe.only('Debugging Scripts', function() {
       context.document.showMessageX('Hello World');
     `).catch((error) => {
       expect(error.entries.line).to.equal(6);
-      done();
+    });
+  });
+
+  it('should return error with sourceURL', () => {
+    return sketch.runFile('fixtures/erroneous-code.cocoascript').catch((error) => {
+      expect(error.entries.line).to.equal(3);
+      expect(error.entries.sourceURL).to.equal('fixtures/erroneous-code.cocoascript');
+    });
+  });
+
+  it('should return error with line numbers that reflect imports', function() {
+    return sketch.run(`
+      @import 'fixtures/erroneous-code.cocoascript'
+    `).catch((error) => {
+      expect(error.entries.sourceURL).to.equal(__dirname + '/fixtures/erroneous-code.cocoascript');
+      expect(error.entries.line).to.equal(3);
+    });
+  });
+
+  it('independet of the position of the import statement', function() {
+    return sketch.run(`
+
+
+      @import 'fixtures/erroneous-code.cocoascript'
+    `).catch((error) => {
+      expect(error.entries.sourceURL).to.equal(__dirname + '/fixtures/erroneous-code.cocoascript');
+      expect(error.entries.line).to.equal(3);
+    });
+  });
+
+  it('when doing more than two imports', function() {
+    return sketch.run(`
+      @import 'fixtures/five-lines-of-code.cocoascript'
+      @import 'fixtures/erroneous-code.cocoascript'
+    `).catch((error) => {
+      expect(error.entries.sourceURL).to.equal(__dirname + '/fixtures/erroneous-code.cocoascript');
+      expect(error.entries.line).to.equal(3);
+    });
+  });
+
+  it('should return error with line numbers that reflect imports, when error is in main file', function() {
+    return sketch.run(`
+      @import 'fixtures/five-lines-of-code.cocoascript'
+
+      context.document.showMessageX('Hello World')
+    `).catch((error) => {
+      expect(error.entries.line).to.equal(4);
+    });
+  });
+
+  xit('when doing more than more than two import', function() {
+    return sketch.run(`
+      @import 'fixtures/five-lines-of-code.cocoascript'
+      @import 'fixtures/five-lines-of-code.cocoascript'
+      @import 'fixtures/erroneous-code.cocoascript'
+      @import 'fixtures/five-lines-of-code.cocoascript'
+    `).catch((error) => {
+      expect(error.entries.sourceURL).to.equal(__dirname + '/fixtures/erroneous-code.cocoascript');
+      expect(error.entries.line).to.equal(3);
+    });
+  });
+
+  xit('when doing more than more three import before import with error', function() {
+    return sketch.run(`
+      @import 'fixtures/five-lines-of-code.cocoascript'
+      @import 'fixtures/five-lines-of-code.cocoascript'
+      @import 'fixtures/five-lines-of-code.cocoascript'
+      @import 'fixtures/erroneous-code.cocoascript'
+    `).catch((error) => {
+      expect(error.entries.sourceURL).to.equal(__dirname + '/fixtures/erroneous-code.cocoascript');
+      expect(error.entries.line).to.equal(3);
     });
   });
 
